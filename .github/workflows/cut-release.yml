@@ -20,6 +20,10 @@ jobs:
         shell: pwsh
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target-commit-id || github.sha }}
+
       - name: Determine new version
         id: load-versions
         env:
@@ -52,10 +56,6 @@ jobs:
           }
           echo "New version: $($env:VERSION)"
           echo "VERSION=$($env:VERSION)" >> $env:GITHUB_ENV
-
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.target-commit-id || github.sha }}
 
       - name: Create the release branch
         env:
