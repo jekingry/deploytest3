@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   cut-release:
-    if: github.ref == 'refs/heads/main'
+    environment: VersionManagement
     defaults:
       run:
         shell: pwsh
@@ -25,13 +25,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
           ref: ${{ inputs.target-commit-id || github.sha }}
 
       - name: Determine new version
         id: load-versions
         env:
             VERSION: ${{ inputs.new-version }}
-            GH_TOKEN: ${{ github.token }}
+            GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
         run: |
           $newVersion = $env:VERSION
           $releases = gh release list --json isDraft,isLatest,isPrerelease,name,tagName | ConvertFrom-Json
@@ -79,10 +80,10 @@ jobs:
             VERSION: ${{ inputs.new-version || steps.load-versions.outputs.VERSION }}
             RELEASE_TARGET: ${{ inputs.target-commit-id || github.sha }}
             LATEST_VERSION: ${{ steps.load-versions.outputs.LAST_VERSION }}
-            GH_TOKEN: ${{ github.token }}
+            GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
         run: |
           $newVersion = $env:VERSION
-          
+
           # add the "-rc.0" suffix to the version number
           $initialRcVersion = $env:VERSION -replace '\.0$', '.0-rc.0'
 
