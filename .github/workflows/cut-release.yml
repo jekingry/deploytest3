@@ -63,9 +63,11 @@ jobs:
             VERSION: ${{ inputs.new-version || steps.load-versions.outputs.VERSION }}
             RELEASE_TARGET: ${{ inputs.target-commit-id || github.sha }}
         run: |
+          echo "Version '${{ steps.load-versions.outputs.VERSION }}'"
           $newVersion = $env:VERSION
           $versionParts = $newVersion -split '\.'
           $branchName = "release/$($versionParts[0]).$($versionParts[1])"
+
           echo "Creating branch: $branchName"
           git checkout -b $branchName 
           git push origin $branchName
@@ -78,5 +80,6 @@ jobs:
             GH_TOKEN: ${{ github.token }}
         run: |
           $newVersion = $env:VERSION
-          $initialRcVersion = $newVersion -replace '\.0$', '-rc.0'
+          $initialRcVersion = $env:VERSION -replace '\.0$', '-rc.0'
+          
           gh release create $initialRcVersion --title "Release $initialRcVersion" --target $env:RELEASE_TARGET --prerelease --generate-notes --notes-start-tag $env:LATEST_VERSION
