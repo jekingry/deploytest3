@@ -38,7 +38,7 @@ jobs:
           if ($latestRelease -ne $null) {
               $latestVersion = $latestRelease.tagName
               echo "Latest version: $latestVersion"
-              echo "LATEST_VERSION=$latestVersion" >> $env:GITHUB_ENV
+              echo "LATEST_VERSION=$latestVersion" >> $env:GITHUB_OUTPUT
           }
 
           if ($newVersion -eq "") {
@@ -48,7 +48,7 @@ jobs:
             }
             
             if ($latestRelease -eq $null) {
-                $newVersion = "1.0.0"
+                $newVersion = "v1.0.0"
             } else {
                 $latestVersion = $latestRelease.tagName
                 $versionParts = $latestVersion -split '\.'
@@ -56,14 +56,13 @@ jobs:
             }
           }
           echo "New version: $newVersion"
-          echo "VERSION=$newVersion" >> $env:GITHUB_ENV
+          echo "VERSION=$newVersion" >> $env:GITHUB_OUTPUT
 
       - name: Create the release branch
         env:
             VERSION: ${{ inputs.new-version || steps.load-versions.outputs.VERSION }}
             RELEASE_TARGET: ${{ inputs.target-commit-id || github.sha }}
         run: |
-          echo "Version '${{ steps.load-versions.outputs.VERSION }}'"
           $newVersion = $env:VERSION
           $versionParts = $newVersion -split '\.'
           $branchName = "release/$($versionParts[0]).$($versionParts[1])"
@@ -81,5 +80,5 @@ jobs:
         run: |
           $newVersion = $env:VERSION
           $initialRcVersion = $env:VERSION -replace '\.0$', '-rc.0'
-          
+
           gh release create $initialRcVersion --title "Release $initialRcVersion" --target $env:RELEASE_TARGET --prerelease --generate-notes --notes-start-tag $env:LATEST_VERSION
