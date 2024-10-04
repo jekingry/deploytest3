@@ -11,7 +11,7 @@ on:
       new-version:
         description: 'New version number'
         required: false
-        
+
 permissions:
   contents: write
 
@@ -82,6 +82,8 @@ jobs:
             GH_TOKEN: ${{ github.token }}
         run: |
           $newVersion = $env:VERSION
-          $initialRcVersion = $env:VERSION -replace '\.0$', '-rc.0'
+          
+          # add the "-rc.0" suffix to the version number
+          $initialRcVersion = $env:VERSION -replace '\.0$', '.0-rc.0'
 
           gh release create $initialRcVersion --title "Release $initialRcVersion" --target $env:RELEASE_TARGET --prerelease --generate-notes --notes-start-tag $env:LATEST_VERSION
