@@ -24,6 +24,7 @@ jobs:
         id: load-versions
         env:
             VERSION: ${{ inputs.new-version }}
+            GH_TOKEN: ${{ github.token }}
         run: |
           $releases = gh release list --json isDraft,isLatest,isPrerelease,name,tagName | ConvertFrom-Json
           $latestRelease = $releases | Where-Object { $_.isLatest } | Select-Object -First 1
@@ -72,6 +73,7 @@ jobs:
             VERSION: ${{ inputs.new-version || steps.load-versions.outputs.VERSION }}
             RELEASE_TARGET: ${{ inputs.target-commit-id || github.sha }}
             LATEST_VERSION: ${{ steps.load-versions.outputs.LAST_VERSION }}
+            GH_TOKEN: ${{ github.token }}
         run: |
           $initialRcVersion = $env:VERSION -replace '\.0$', '-rc.0'
           gh release create $initialRcVersion --title "Release $initialRcVersion" --target $env:RELEASE_TARGET --prerelease --generate-notes --notes-start-tag $env:LATEST_VERSION
