@@ -30,6 +30,7 @@ jobs:
             VERSION: ${{ inputs.new-version }}
             GH_TOKEN: ${{ github.token }}
         run: |
+          $newVersion = $env:VERSION
           $releases = gh release list --json isDraft,isLatest,isPrerelease,name,tagName | ConvertFrom-Json
           $latestRelease = $releases | Where-Object { $_.isLatest } | Select-Object -First 1
           $preRelease = $releases | Where-Object { $_.isPrerelease } | Select-Object -First 1
@@ -40,29 +41,30 @@ jobs:
               echo "LATEST_VERSION=$latestVersion" >> $env:GITHUB_ENV
           }
 
-          if ($env:VERSION -eq "") {
+          if ($newVersion -eq "") {
             if ($preRelease -ne $null) {
                 echo "Pre-release already exists: $($preRelease.tagName)"
                 exit 1
             }
             
             if ($latestRelease -eq $null) {
-                $env:VERSION = "1.0.0"
+                $newVersion = "1.0.0"
             } else {
                 $latestVersion = $latestRelease.tagName
                 $versionParts = $latestVersion -split '\.'
-                $env:VERSION = "{0}.{1}.{2}" -f $versionParts[0], $versionParts[1]  + 1, 0
+                $newVersion = "{0}.{1}.{2}" -f $versionParts[0], $versionParts[1]  + 1, 0
             }
           }
-          echo "New version: $($env:VERSION)"
-          echo "VERSION=$($env:VERSION)" >> $env:GITHUB_ENV
+          echo "New version: $newVersion"
+          echo "VERSION=$newVersion" >> $env:GITHUB_ENV
 
       - name: Create the release branch
         env:
             VERSION: ${{ inputs.new-version || steps.load-versions.outputs.VERSION }}
             RELEASE_TARGET: ${{ inputs.target-commit-id || github.sha }}
         run: |
-          $versionParts = "release/$($env:VERSION)" -split '\.'
+          $newVersion = $env:VERSION
+          $versionParts = $newVersion -split '\.'
           $branchName = "release/$($versionParts[0]).$($versionParts[1])"
           echo "Creating branch: $branchName"
           git checkout -b $branchName 
@@ -75,5 +77,6 @@ jobs:
             LATEST_VERSION: ${{ steps.load-versions.outputs.LAST_VERSION }}
             GH_TOKEN: ${{ github.token }}
         run: |
-          $initialRcVersion = $env:VERSION -replace '\.0$', '-rc.0'
+          $newVersion = $env:VERSION
+          $initialRcVersion = $newVersion -replace '\.0$', '-rc.0'
           gh release create $initialRcVersion --title "Release $initialRcVersion" --target $env:RELEASE_TARGET --prerelease --generate-notes --notes-start-tag $env:LATEST_VERSION
