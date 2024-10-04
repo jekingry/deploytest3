@@ -11,6 +11,9 @@ on:
       new-version:
         description: 'New version number'
         required: false
+        
+permissions:
+  contents: write
 
 jobs:
   cut-release:
