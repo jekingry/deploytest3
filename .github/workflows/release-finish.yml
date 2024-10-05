@@ -31,6 +31,8 @@ jobs:
 
       - name: Determin versions
         id: determine-versions
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
         run: |
           $prereleaseVersion = gh release list --json tagName,isPrerelease --jq ".[] | select(.isPrerelease) | .tagName"
           echo "Last pre-release: $prereleaseVersion"
