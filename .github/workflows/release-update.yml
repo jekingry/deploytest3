@@ -41,8 +41,8 @@ jobs:
       RELEASE_TYPE: ${{ steps.get-release-type.outputs.RELEASE_TYPE }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-tags: true
+      - name: Fetch all tags
+        run: git fetch --depth=1 --tags
 
       - name: Get release versions
         id: get-release-type
@@ -79,7 +79,7 @@ jobs:
             $releaseType = "production"
           } elseif ($env:CURRENT_BRANCH -eq $prereleaseBranch) {
             $branchName = $prereleaseVersion
-            $releaseType = "prerelase"
+            $releaseType = "prerelease"
           } else {
             echo "New release branch"
             echo "RELEASE_TYPE=new" >> $env:GITHUB_OUTPUT
@@ -87,7 +87,7 @@ jobs:
           }
 
           # check if there are differences
-          $diff = git diff --name-only $branchName..HEAD
+          $diff = git diff --name-only "$branchName..HEAD"
           if ($diff -ne $null) {
             echo "There are differences between the $releaseType and the current branch"
             echo "RELEASE_TYPE=$releaseType" >> $env:GITHUB_OUTPUT

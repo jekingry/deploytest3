@@ -27,10 +27,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
-          fetch-tags: true
+      - name: Fetch all tags
+        run: git fetch --depth=1 --tags
 
       - name: Determin versions
         id: determine-versions
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
         run: |
           $prereleaseVersion = gh release list --json tagName,isPrerelease --jq ".[] | select(.isPrerelease) | .tagName"
           echo "Last pre-release: $prereleaseVersion"
