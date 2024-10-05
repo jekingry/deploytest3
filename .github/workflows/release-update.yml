@@ -1,0 +1,154 @@
+name: Release - Update
+
+# Manual Steps: Pre-Release
+
+# If:
+# - Current Pre-Version = v2.3.0-rc.4
+
+# Create Release
+# gh release create v2.3.0-rc.5 --target release/v2.3 --prerelease --generate-notes --notes-start-tag v2.2.0
+
+# Update main
+# git checkout -b release/v2.3 main
+# git pull
+# git checkout main
+# git pull
+# git merge --no-ff release/v2.3
+# git push origin main
+
+# If conflicts then make PR:
+# git checkout -b release-merge/v2.3.0-rc.5
+# gh pr create --fill --base main --head release-merge/v2.3.0-rc.5 --label "merge-conflict"
+
+
+on:
+  push:
+    branches:
+      - 'release/*'
+
+permissions:
+  contents: write
+
+jobs:
+  get-release-type:
+    defaults:
+      run:
+        shell: pwsh
+    runs-on: ubuntu-latest
+    outputs:
+      PRODUCTION_VERSION: ${{ steps.get-release-type.outputs.PRODUCTION_VERSION }}
+      PRODUCTION_BRANCH: ${{ steps.get-release-type.outputs.PRODUCTION_BRANCH }}
+      PRERELEASE_VERSION: ${{ steps.get-release-type.outputs.PRERELEASE_VERSION }}
+      PRERELEASE_BRANCH: ${{ steps.get-release-type.outputs.PRERELEASE_BRANCH }}
+      RELEASE_TYPE: ${{ steps.get-release-type.outputs.RELEASE_TYPE }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
+      - name: Get release versions
+        id: get-release-type
+        env:
+            GH_TOKEN: ${{ github.token }}
+            CURRENT_BRANCH: ${{ github.ref }}
+        run: |
+          $productionVersion = gh release list --json tagName,isLatest --jq ".[] | select(.isLatest) | .tagName"
+          echo "Production release: $productionVersion"
+          echo "PRODUCTION_VERSION=$productionVersion" >> $env:GITHUB_OUTPUT
+
+          $productionVersionParts = $productionVersion -split '\.'
+          $productionVersionBranch = "release/$($productionVersionParts[0]).$($productionVersionParts[1])"
+          echo "Production branch: $productionVersionBranch"
+          echo "PRODUCTION_BRANCH=$productionVersionBranch" >> $env:GITHUB_OUTPUT
+
+          $prereleaseVersion = gh release list --json tagName,isPrerelease --jq ".[] | select(.isPrerelease) | .tagName"
+          echo "Pre-release: $prereleaseVersion"
+          if ($prereleaseVersion -ne $null) {
+            echo "PRERELEASE_VERSION=$prereleaseVersion" >> $env:GITHUB_OUTPUT
+
+            $prereleaseVersionParts = $prereleaseVersion -split '\.',
+            $prereleaseBranch = "release/$($prereleaseVersionParts[0]).$($prereleaseVersionParts[1])"
+
+            echo "Pre-release branch: $prereleaseBranch"
+            echo "PRERELEASE_BRANCH=$prereleaseBranch" >> $env:GITHUB_OUTPUT
+          }
+
+          $branchName = $null
+          $releaseType = $null
+
+          if ($env:CURRENT_BRANCH -eq $productionVersionBranch) {
+            $branchName = $productionVersion
+            $releaseType = "production"
+          } elseif ($env:CURRENT_BRANCH -eq $prereleaseBranch) {
+            $branchName = $prereleaseVersion
+            $releaseType = "prerelase"
+          } else {
+            echo "New release branch"
+            echo "RELEASE_TYPE=new" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+
+          # check if there are differences
+          $diff = git diff --name-only $branchName..HEAD
+          if ($diff -ne $null) {
+            echo "There are differences between the $releaseType and the current branch"
+            echo "RELEASE_TYPE=$releaseType" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "There are no differences between the $releaseType and the current branch"
+            echo "RELEASE_TYPE=no-changes" >> $env:GITHUB_OUTPUT
+          }
+
+  update-prerelease:
+    environment: ReleaseManagement
+    runs-on: ubuntu-latest
+    needs: get-release-type
+    if: ${{ needs.get-release-type.outputs.RELEASE_TYPE == 'prerelease' }}
+    defaults: 
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+
+      - name: Create new RC release
+        env:
+            PRERELEASE_VERSION: ${{ needs.get-release-type.outputs.PRERELEASE_VERSION }}
+            PRERELEASE_BRANCH: ${{ needs.get-release-type.outputs.PRERELEASE_BRANCH }}
+            PRODUCTION_VERSION: ${{ needs.get-release-type.outputs.PRODUCTION_VERSION }}
+            GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+        run: |
+          $prereleaseVersion = $env:PRERELEASE_VERSION
+          $parts = $prereleaseVersion -split '\.'
+          $currentRc = [int]$parts[3]
+          $nextRc = $currentRc + 1
+          $newRcVersion = "$($parts[0]).$($parts[1]).$($parts[2]).$nextRc"
+
+          echo "New RC version: $rcVersion"
+          gh release create $newRcVersion `
+            --title "Release Candidate $rcVersion" `
+            --prerelease `
+            --generate-notes `
+            --notes-start-tag $env:PRODUCTION_VERSION `
+            --target $env:PRERELEASE_BRANCH
+          
+          # Delete old RC release
+          gh release delete $prereleaseVersion --cleanup-tag --yes
+          
+          # Attempt to merge into main if no conflicts
+          git fetch origin main
+          git checkout main
+          git pull
+          (git merge --no-ff $newRcVersion && git push origin main) || {
+            echo "Merge conflicts detected. Creating a pull request."
+            $mergeBranch = "release-merge/$newRcVersion"
+            git checkout -b $mergeBranch $newRcVersion
+            git push origin $mergeBranch
+            gh pr create `
+              --title "Release Candidate $newRcVersion to main" `
+              --body "This PR resolves merge conflicts between $newRcVersion and main." `
+              --base main `
+              --head $mergeBranch `
+              --label "merge-conflict"
+          }
+

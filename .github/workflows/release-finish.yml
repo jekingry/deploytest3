@@ -1,0 +1,82 @@
+# When a release branch is created, this workflow will cut a release
+
+# Manual steps:
+#
+# If:
+# - Next Version = v2.3
+#
+# gh release create v2.3.0 --title "Release v2.3.0" --target release/v2.3  --generate-notes --notes-start-tag v2.2.0
+# gh release delete v2.3.0-rc.4
+
+name: Release - Publish
+
+on:
+  workflow_dispatch        
+
+permissions:
+  contents: write
+
+jobs:
+  finish-release:
+    runs-on: ubuntu-latest
+    environment: ReleaseManagement
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine new version
+        id: load-versions
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+        run: |
+          $prereleaseVersion = gh release list --json tagName,isPrerelease --jq ".[] | select(.isPrerelease) | .tagName"
+          echo "Last pre-release: $prereleaseVersion"
+
+          if (-not $prereleaseVersion) {
+              echo "No pre-release found"
+              exit 1
+          }
+
+          $productionVersion = gh release list --json tagName,isLatest --jq ".[] | select(.isLatest) | .tagName"
+          echo "Current production release: $productionVersion"
+
+          $parts = $prereleaseVersion -split '.'
+          $major = $parts[0]
+          $minor = $parts[1]
+          $newVersion = "$major.$minor.0"
+          echo "New version: $newVersion"
+          
+          git fetch origin --tags
+
+          # Create the release tag
+          git tag $newVersion $prereleaseVersion
+          git push origin $newVersion
+
+          # Create the release
+          gh release create $newVersion `
+            --title "Release $newVersion" `
+            --generate-notes `
+            --notes-start-tag $produtionVersion
+          
+          # Delete the pre-release version
+          gh release delete $prereleaseVersion --yes
+
+          # Merge the release branch into main
+          $releaseBranch = "release/$major.$minor"
+
+          git fetch origin main
+          git checkout main
+          (git merge --no-ff $prereleaseVersion && git push origin main) || {
+            echo "Merge conflicts detected. Creating a pull request."
+            $mergeBranch = "release-merge/$newVersion"
+            git checkout -b $mergeBranch $prereleaseVersion 
+            git push origin $mergeBranch
+            gh pr create `
+              --title "Release $newVersion to main" `
+              --body "This PR resolves merge conflicts between $newVersion and main." `
+              --base main `
+              --head $mergeBranch `
+              --label "merge-conflict"          
+          }
