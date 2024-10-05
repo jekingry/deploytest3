@@ -122,7 +122,9 @@ jobs:
           $nextRc = $currentRc + 1
           $newRcVersion = "$($parts[0]).$($parts[1]).$($parts[2]).$nextRc"
 
-          echo "New RC version: $rcVersion"
+          echo "New RC version: $newRcVersion"
+          git tag $newRcVersion HEAD
+          git push origin $newRcVersion
           gh release create $newRcVersion `
             --title "Release Candidate $newRcVersion" `
             --prerelease `
@@ -136,7 +138,7 @@ jobs:
           # Attempt to merge into main if no conflicts
           git fetch origin main
           git checkout main
-          (git merge --allow-unrelated-histories --no-ff $newRcVersion --message "Merge $newRcVersion" && git push origin main) || {
+          (git merge --no-ff $newRcVersion --message "Merge $newRcVersion" && git push origin main) || {
             echo "Merge conflicts detected. Creating a pull request."
             $mergeBranch = "release-merge/$newRcVersion"
             git checkout -b $mergeBranch $newRcVersion
