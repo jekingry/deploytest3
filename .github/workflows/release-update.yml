@@ -27,11 +27,12 @@ on:
 permissions:
   contents: write
 
+defaults:
+  run:
+    shell: pwsh
+
 jobs:
   get-release-type:
-    defaults:
-      run:
-        shell: pwsh
     runs-on: ubuntu-latest
     outputs:
       PRODUCTION_VERSION: ${{ steps.get-release-type.outputs.PRODUCTION_VERSION }}
@@ -76,13 +77,13 @@ jobs:
 
           if ($env:CURRENT_BRANCH -eq $productionVersionBranch) {
             $currentVersion = $productionVersion
-            $releaseType = "production"
+            $releaseType = "hotfix"
           } elseif ($env:CURRENT_BRANCH -eq $prereleaseBranch) {
             $currentVersion = $prereleaseVersion
             $releaseType = "prerelease"
           } else {
-            echo "New release branch"
-            echo "RELEASE_TYPE=new" >> $env:GITHUB_OUTPUT
+            echo "Unknown release branch"
+            echo "RELEASE_TYPE=unknown" >> $env:GITHUB_OUTPUT
             exit 0
           }
 
@@ -96,14 +97,62 @@ jobs:
             echo "RELEASE_TYPE=no-changes" >> $env:GITHUB_OUTPUT
           }
 
+  hotfix-release:
+    environment: ReleaseManagement
+    runs-on: ubuntu-latest
+    needs: get-release-type
+    if: ${{ needs.get-release-type.outputs.RELEASE_TYPE == 'hotfix' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}    
+
+      - name: Create new hotfix release
+        env:
+            PRODUCTION_VERSION: ${{ needs.get-release-type.outputs.PRODUCTION_VERSION }}
+            PRODUCTION_BRANCH: ${{ needs.get-release-type.outputs.PRODUCTION_BRANCH }}
+            GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+        run: |
+          $productionVersion = $env:PRODUCTION_VERSION
+          $parts = $productionVersion -split '\.'
+          $major = $parts[0]
+          $minor = $parts[1]
+          $patch = 1 + [int]$parts[2]
+
+          $newVersion = "$major.$minor.$patch"
+
+          echo "New hotfix version: $newVersion"
+          git tag $newVersion HEAD
+          git push origin $newVersion
+          gh release create $newVersion `
+            --title "Release $newVersion" `
+            --generate-notes `
+            --notes-start-tag $productionVersion 
+                    
+          # Attempt to merge into main if no conflicts
+          git fetch origin main
+          git checkout main
+          git config user.name "github-actions[bot]"
+          git config user.email "${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com"      
+          (git merge --no-ff --message "Merge $newVersion" $newVersion && git push origin main) || {
+            echo "Merge conflicts detected. Creating a pull request."
+            $mergeBranch = "release-merge/$newVersion"
+            git checkout -b $mergeBranch $newVersion
+            git push -u origin $mergeBranch
+            gh pr create `
+              --title "Release $newVersion to main" `
+              --body "This PR resolves merge conflicts between $newVersion and main." `
+              --base main `
+              --head $mergeBranch `
+              --label "merge-conflict"
+          }
+
   update-prerelease:
     environment: ReleaseManagement
     runs-on: ubuntu-latest
     needs: get-release-type
     if: ${{ needs.get-release-type.outputs.RELEASE_TYPE == 'prerelease' }}
-    defaults: 
-      run:
-        shell: pwsh
     steps:
       - uses: actions/checkout@v4
         with:
@@ -130,8 +179,7 @@ jobs:
             --title "Release Candidate $newRcVersion" `
             --prerelease `
             --generate-notes `
-            --notes-start-tag $env:PRODUCTION_VERSION `
-            --target $env:PRERELEASE_BRANCH
+            --notes-start-tag $env:PRODUCTION_VERSION
           
           # Delete old RC release
           gh release delete $prereleaseVersion --cleanup-tag --yes
