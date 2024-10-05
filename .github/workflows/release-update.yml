@@ -26,7 +26,8 @@ on:
 
 permissions:
   contents: write
-
+  pull-requests: write
+  
 defaults:
   run:
     shell: pwsh
@@ -98,7 +99,6 @@ jobs:
           }
 
   hotfix-release:
-    environment: ReleaseManagement
     runs-on: ubuntu-latest
     needs: get-release-type
     if: ${{ needs.get-release-type.outputs.RELEASE_TYPE == 'hotfix' }}
@@ -107,7 +107,7 @@ jobs:
       MERGE_BASE: ${{ steps.find-merge-base.outputs.MERGE_BASE }}
       MERGE_TYPE_NAME: "Hotfix"
     env:
-      GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
       TARGET_COMMIT: ${{ github.sha }}
       PRERELEASE_VERSION: ${{ needs.get-release-type.outputs.PRERELEASE_VERSION }}
       PRERELEASE_BRANCH: ${{ needs.get-release-type.outputs.PRERELEASE_BRANCH }}
@@ -115,8 +115,6 @@ jobs:
       PRODUCTION_BRANCH: ${{ needs.get-release-type.outputs.PRODUCTION_BRANCH }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
           
       - name: Calculate new version
         id: calculate-version
@@ -152,7 +150,6 @@ jobs:
           echo "MERGE_BASE=$mergeBase" >> $env:GITHUB_OUTPUT
 
   update-prerelease:
-    environment: ReleaseManagement
     runs-on: ubuntu-latest
     needs: get-release-type
     if: ${{ needs.get-release-type.outputs.RELEASE_TYPE == 'prerelease' }}
@@ -161,15 +158,13 @@ jobs:
       MERGE_BASE: "main"
       MERGE_TYPE_NAME: "Release Candidate"
     env:
-      GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
       TARGET_COMMIT: ${{ github.sha }}
       PRERELEASE_VERSION: ${{ needs.get-release-type.outputs.PRERELEASE_VERSION }}
       PRERELEASE_BRANCH: ${{ needs.get-release-type.outputs.PRERELEASE_BRANCH }}
       PRODUCTION_VERSION: ${{ needs.get-release-type.outputs.PRODUCTION_VERSION }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
 
       - name: Calculate new RC version
         id: calculate-version
@@ -197,12 +192,11 @@ jobs:
         run: gh release delete $env:PRERELEASE_VERSION --cleanup-tag --yes
       
   merge-branch:
-    environment: ReleaseManagement
     runs-on: ubuntu-latest
     needs: [update-prerelease, hotfix-release]
     if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     env:
-      GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
       TARGET_COMMIT: ${{ github.sha }}
       MERGE_BASE: ${{ needs.update-prerelease.outputs.MERGE_BASE || needs.hotfix-release.outputs.MERGE_BASE }}
       MERGE_TYPE_NAME: ${{ needs.update-prerelease.outputs.MERGE_TYPE_NAME || needs.hotfix-release.outputs.MERGE_TYPE_NAME }}
