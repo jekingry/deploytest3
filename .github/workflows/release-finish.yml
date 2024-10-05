@@ -94,4 +94,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
           PRERELEASE_VERSION: ${{ steps.determine-versions.outputs.PRERELEASE_VERSION }}
-        run: gh release delete $env:PRERELEASE_VERSION --yes         
+        run: gh release delete $env:PRERELEASE_VERSION --cleanup-tag --yes       
