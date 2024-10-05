@@ -8,7 +8,7 @@
 # gh release create v2.3.0 --title "Release v2.3.0" --target release/v2.3  --generate-notes --notes-start-tag v2.2.0
 # gh release delete v2.3.0-rc.4
 
-name: Release - Publish
+name: Release - Finish
 
 on:
   workflow_dispatch        
@@ -40,9 +40,11 @@ jobs:
           }
 
           $productionVersion = gh release list --json tagName,isLatest --jq ".[] | select(.isLatest) | .tagName"
-          echo "Current production release: $productionVersion"
+          if ($productionVersion) {
+              echo "Current production release: $productionVersion"
+          }
 
-          $parts = $prereleaseVersion -split '.'
+          $parts = $prereleaseVersion -split '\.'
           $major = $parts[0]
           $minor = $parts[1]
           $newVersion = "$major.$minor.0"
