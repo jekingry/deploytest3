@@ -217,16 +217,21 @@ jobs:
           git push -u origin $mergeBranch
       - name: Create Merge PR
         env:
-          AUTHOR_EMAIL: ${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com
           MERGE_BRANCH: ${{ steps.create-merge-branch.outputs.MERGE_BRANCH }}
         run: |
           gh pr create `
-            --title "Release Candidate $($env:NEW_VERSION) to main" `
-            --fill `
+            --title "Release Candidate $($env:NEW_VERSION) to $(env:MERGE_BRANCH)" `
+            --body "Merge RC $($env:NEW_VERSION) to $(env:MERGE_BRANCH)" `
             --base main `
             --head $env:MERGE_BASE 
+            --label auto-merge
+      - name: Attempt to merge PR
+        env:
+          AUTHOR_EMAIL: ${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com
+          MERGE_BRANCH: ${{ steps.create-merge-branch.outputs.MERGE_BRANCH }}
+        run: |
           gh pr merge $env:MERGE_BRANCH `
-            --author-email $env:AUTHOR_EMAIL `
-            --merge `
-            --auto `
-            --delete-branch
+              --author-email $env:AUTHOR_EMAIL `
+              --merge `
+              --auto `
+              --delete-branch
