@@ -105,6 +105,7 @@ jobs:
     outputs: 
       NEW_VERSION: ${{ steps.calculate-version.outputs.NEW_VERSION }}
       MERGE_BASE: ${{ steps.find-merge-base.outputs.MERGE_BASE }}
+      MERGE_TYPE_NAME: "Hotfix"
     env:
       GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
       TARGET_COMMIT: ${{ github.sha }}
@@ -158,6 +159,7 @@ jobs:
     outputs: 
       NEW_VERSION: ${{ steps.calculate-version.outputs.NEW_VERSION }}
       MERGE_BASE: "main"
+      MERGE_TYPE_NAME: "Release Candidate"
     env:
       GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
       TARGET_COMMIT: ${{ github.sha }}
@@ -203,6 +205,7 @@ jobs:
       GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
       TARGET_COMMIT: ${{ github.sha }}
       MERGE_BASE: ${{ needs.update-prerelease.outputs.MERGE_BASE || needs.hotfix-release.outputs.MERGE_BASE }}
+      MERGE_TYPE_NAME: ${{ needs.update-prerelease.outputs.MERGE_TYPE_NAME || needs.hotfix-release.outputs.MERGE_TYPE_NAME }}
       NEW_VERSION: ${{ needs.update-prerelease.outputs.NEW_VERSION || needs.hotfix-release.outputs.NEW_VERSION }}
     steps:
       - uses: actions/checkout@v4
@@ -210,27 +213,27 @@ jobs:
       - name: Create merge branch
         id: create-merge-branch
         run: |          
-          $mergeBranch = "merge/$($env:NEW_VERSION)"
-          echo "MERGE_BRANCH=$mergeBranch" >> $env:GITHUB_OUTPUT
+          $mergeHead = "merge/$($env:NEW_VERSION)"
+          echo "MERGE_HEAD=$mergeHead" >> $env:GITHUB_OUTPUT
 
-          git checkout -b $mergeBranch $env:TARGET_COMMIT
-          git push -u origin $mergeBranch
+          git checkout -b $mergeHead $env:TARGET_COMMIT
+          git push -u origin $mergeHead
       - name: Create Merge PR
         env:
-          MERGE_BRANCH: ${{ steps.create-merge-branch.outputs.MERGE_BRANCH }}
+          MERGE_HEAD: ${{ steps.create-merge-branch.outputs.MERGE_HEAD }}
         run: |
           gh pr create `
-            --title "Release Candidate $($env:NEW_VERSION) to $(env:MERGE_BRANCH)" `
-            --body "Merge RC $($env:NEW_VERSION) to $(env:MERGE_BRANCH)" `
-            --base main `
-            --head $env:MERGE_BASE `
+            --title "Release Candidate $($env:NEW_VERSION) to $($env:MERGE_BASE)" `
+            --body "Merge $($env:MERGE_TYPE_NAME) $($env:NEW_VERSION) to $(env:MERGE_BRANCH)" `
+            --base $env:MERGE_BASE `
+            --head $env:MERGE_HEAD `
             --label auto-merge
       - name: Attempt to merge PR
         env:
           AUTHOR_EMAIL: ${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com
-          MERGE_BRANCH: ${{ steps.create-merge-branch.outputs.MERGE_BRANCH }}
+          MERGE_HEAD: ${{ steps.create-merge-branch.outputs.MERGE_HEAD }}
         run: |
-          gh pr merge $env:MERGE_BRANCH `
+          gh pr merge $env:MERGE_HEAD `
               --author-email $env:AUTHOR_EMAIL `
               --merge `
               --auto `
