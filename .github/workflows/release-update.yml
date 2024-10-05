@@ -79,7 +79,7 @@ jobs:
             $releaseType = "production"
           } elseif ($env:CURRENT_BRANCH -eq $prereleaseBranch) {
             $branchName = $prereleaseVersion
-            $releaseType = "prerelase"
+            $releaseType = "prerelease"
           } else {
             echo "New release branch"
             echo "RELEASE_TYPE=new" >> $env:GITHUB_OUTPUT
