@@ -62,21 +62,3 @@ jobs:
           
           # Delete the pre-release version
           gh release delete $prereleaseVersion --yes
-
-          # Merge the release branch into main
-          $releaseBranch = "release/$major.$minor"
-
-          git fetch origin main
-          git checkout main
-          (git merge --no-ff $prereleaseVersion && git push origin main) || {
-            echo "Merge conflicts detected. Creating a pull request."
-            $mergeBranch = "release-merge/$newVersion"
-            git checkout -b $mergeBranch $prereleaseVersion 
-            git push origin $mergeBranch
-            gh pr create `
-              --title "Release $newVersion to main" `
-              --body "This PR resolves merge conflicts between $newVersion and main." `
-              --base main `
-              --head $mergeBranch `
-              --label "merge-conflict"          
-          }

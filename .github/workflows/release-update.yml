@@ -143,7 +143,7 @@ jobs:
             echo "Merge conflicts detected. Creating a pull request."
             $mergeBranch = "release-merge/$newRcVersion"
             git checkout -b $mergeBranch $newRcVersion
-            git push origin $mergeBranch
+            git push -u origin $mergeBranch
             gh pr create `
               --title "Release Candidate $newRcVersion to main" `
               --body "This PR resolves merge conflicts between $newRcVersion and main." `
