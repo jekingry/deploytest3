@@ -125,7 +125,7 @@ jobs:
           $newVersion = "$major.$minor.$patch"
 
           echo "New hotfix version: $newVersion"
-          echo "NEW_VERSION=$newVersion" >> $env:GITHUB_OUTPUT        T          
+          echo "NEW_VERSION=$newVersion" >> $env:GITHUB_OUTPUT  
 
       - name: Create new hotfix release
         env:
