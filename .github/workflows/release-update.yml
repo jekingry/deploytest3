@@ -10,11 +10,11 @@ name: Release - Update
 # gh release delete v2.3.0-rc.4
 
 # Update main
-# git checkout -b release/v2.3 main
+# git checkout release/v2.3
 # git pull
 # git checkout main
 # git pull
-# git merge --no-ff release/v2.3
+# git merge --no-ff v2.3.0-rc.5 --message "Merge 'v2.3.0-rc.5'"
 # git push origin main
 
 # If conflicts then make PR:
@@ -50,7 +50,7 @@ jobs:
         id: get-release-type
         env:
             GH_TOKEN: ${{ github.token }}
-            CURRENT_BRANCH: ${{ github.ref }}
+            CURRENT_BRANCH: ${{ github.ref_name }}
         run: |
           $productionVersion = gh release list --json tagName,isLatest --jq ".[] | select(.isLatest) | .tagName"
           echo "Production release: $productionVersion"
@@ -139,7 +139,7 @@ jobs:
           git fetch origin main
           git checkout main
           git pull
-          (git merge --no-ff $newRcVersion --message "Merge branch '$newRcVersion'" && git push origin main) || {
+          (git merge --no-ff $newRcVersion --message "Merge '$newRcVersion'" && git push origin main) || {
             echo "Merge conflicts detected. Creating a pull request."
             $mergeBranch = "release-merge/$newRcVersion"
             git checkout -b $mergeBranch $newRcVersion
