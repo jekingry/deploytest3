@@ -1,0 +1,107 @@
+# When a release branch is created, this workflow will cut a release
+
+# Manual steps:
+#
+# If:
+# - Next Version = v2.3
+#
+# git checkout -b release/v2.3 main
+# git push origin release/v2.3
+# gh release create v2.3.0-rc.0 --title "Release v2.3.0-rc.0" --target release/v2.3 --prerelease --generate-notes --notes-start-tag v2.2.0
+
+name: Release - Cut
+
+on:
+  workflow_dispatch:        
+    inputs:
+      target-commit-id:
+        description: 'Commit ID (default HEAD)'
+        required: false
+      new-version:
+        description: 'New version number'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  cut-release:
+    environment: ReleaseManagement
+    defaults:
+      run:
+        shell: pwsh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+          ref: ${{ inputs.target-commit-id || github.sha }}
+
+      - name: Determine new version
+        id: load-versions
+        env:
+            VERSION: ${{ inputs.new-version }}
+            GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+        run: |
+          $newVersion = $env:VERSION
+          $productionVersion = gh release list --json tagName,isLatest --jq ".[] | select(.isLatest) | .tagName"
+          
+          if ($productionVersion) {
+              echo "Production version: $productionVersion"
+              echo "PRODUCTION_VERSION=$productionVersion" >> $env:GITHUB_OUTPUT
+          }
+
+          if (-not $newVersion) {
+            $prereleaseVersion = gh release list --json tagName,isPrerelease --jq ".[] | select(.isPrerelease) | .tagName"
+            
+            if ($prereleaseVersion) {
+                echo "Pre-release already exists: $prereleaseVersion"
+                exit 1
+            }
+            
+            if ($productionVersion) {
+                $parts = $productioNVersion -split '\.'
+                $major = $parts[0]
+                $minor = 1 + [int]$parts[1]
+
+                $newVersion = "$major.$minor.0"
+            } else {
+                $newVersion = "v1.0.0"
+            }
+          }
+          echo "New version: $newVersion"
+          echo "VERSION=$newVersion" >> $env:GITHUB_OUTPUT
+
+      - name: Create the release
+        env:
+            VERSION: ${{ inputs.new-version || steps.load-versions.outputs.VERSION }}
+            RELEASE_TARGET: ${{ inputs.target-commit-id || github.sha }}
+            PRODUCTION_VERSION: ${{ steps.load-versions.outputs.PRODUCTION_VERSION }}
+            GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+        run: |
+          $newVersion = $env:VERSION
+
+          # add the "-rc.0" suffix to the version number
+          $initialRcVersion = $env:VERSION -replace '\.0$', '.0-rc.0'
+
+          gh release create $initialRcVersion `
+            --title "Release Candidate $initialRcVersion" `
+            --target $env:RELEASE_TARGET `
+            --prerelease `
+            --generate-notes `
+            --notes-start-tag $env:PRODUCTION_VERSION
+
+      - name: Create the release branch
+        env:
+            VERSION: ${{ inputs.new-version || steps.load-versions.outputs.VERSION }}
+            RELEASE_TARGET: ${{ inputs.target-commit-id || github.sha }}
+        run: |
+          $newVersion = $env:VERSION
+          $parts = $newVersion -split '\.'
+          $major = $parts[0]
+          $minor = $parts[1]
+          $branchName = "release/$major.$minor"
+
+          echo "Creating branch: $branchName"
+          git checkout -b $branchName $RELEASE_TARGET
+          git push origin $branchName
