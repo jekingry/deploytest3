@@ -1,0 +1,29 @@
+name: 'Check Build'
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+defaults:
+  run:
+    shell: pwsh
+    
+jobs:
+  check-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Check if 'check.txt' contains the word 'fail' more than once
+      - name: Check build
+        id: check-build
+        run: |
+          $failCount = (Get-Content check.txt | Select-String -Pattern 'fail').Count
+          echo "Fail count: $failCount"
+          if ($failCount -gt 1) {
+            echo "Build failed"
+            exit 1
+          }
+          echo "Build succeeded"
