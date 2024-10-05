@@ -139,6 +139,8 @@ jobs:
           # Attempt to merge into main if no conflicts
           git fetch origin main
           git checkout main
+          git config user.name "github-actions[bot]"
+          git config user.email "${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com"      
           (git merge --no-ff --message "Merge $newRcVersion" $newRcVersion && git push origin main) || {
             echo "Merge conflicts detected. Creating a pull request."
             $mergeBranch = "release-merge/$newRcVersion"
