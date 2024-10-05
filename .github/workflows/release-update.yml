@@ -118,9 +118,9 @@ jobs:
         run: |
           $prereleaseVersion = $env:PRERELEASE_VERSION
           $parts = $prereleaseVersion -split '\.'
-          $currentRc = [int]$parts[2]
+          $currentRc = [int]$parts[3]
           $nextRc = $currentRc + 1
-          $newRcVersion = "$($parts[0]).$($parts[1]).$nextRc"
+          $newRcVersion = "$($parts[0]).$($parts[1]).$($parts[2]).$nextRc"
 
           echo "New RC version: $rcVersion"
           gh release create $newRcVersion `

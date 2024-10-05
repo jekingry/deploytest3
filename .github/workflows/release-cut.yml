@@ -64,9 +64,9 @@ jobs:
                 $major = $parts[0]
                 $minor = 1 + [int]$parts[1]
 
-                $newVersion = "$major.$minor"
+                $newVersion = "$major.$minor.0"
             } else {
-                $newVersion = "v1.0"
+                $newVersion = "v1.0.0"
             }
           }
           echo "New version: $newVersion"
