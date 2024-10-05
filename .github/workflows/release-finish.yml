@@ -58,10 +58,15 @@ jobs:
           git push origin $newVersion
 
           # Create the release
+          $notesArg = ""
+          if ($productionVersion) {
+            $notesArg = "--notes-start-tag $productionVersion"
+          }
+          echo "Creating release $newVersion"
           gh release create $newVersion `
             --title "Release $newVersion" `
             --generate-notes `
-            --notes-start-tag $produtionVersion
+            $notesArg
           
           # Delete the pre-release version
           gh release delete $prereleaseVersion --yes
