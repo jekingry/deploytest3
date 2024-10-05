@@ -41,8 +41,11 @@ jobs:
       RELEASE_TYPE: ${{ steps.get-release-type.outputs.RELEASE_TYPE }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Fetch all tags
-        run: git fetch --depth=1 --tags
+        run: git fetch --tags
 
       - name: Get release versions
         id: get-release-type
