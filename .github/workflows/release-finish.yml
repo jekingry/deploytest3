@@ -25,6 +25,9 @@ jobs:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+          fetch-tags: true
 
       - name: Determine new version
         id: load-versions
@@ -50,8 +53,6 @@ jobs:
           $newVersion = "$major.$minor.0"
           echo "New version: $newVersion"
           
-          git fetch origin --tags
-
           # Create the release tag
           git tag $newVersion $prereleaseVersion
           git push origin $newVersion
