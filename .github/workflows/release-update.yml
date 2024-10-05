@@ -149,7 +149,7 @@ jobs:
             --title "Release $newVersion to $targetBranch" `
             --fill `
             --base $targetBranch `
-            --head $mergeBranch `
+            --head $mergeBranch 
           gh pr merge $mergeBranch `
             --author-email "${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com" `
             --merge `
@@ -198,7 +198,7 @@ jobs:
             --title "Release Candidate $newVersion to main" `
             --fill `
             --base main `
-            --head $mergeBranch `
+            --head $mergeBranch 
           gh pr merge $mergeBranch `
             --author-email "${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com" `
             --merge `
