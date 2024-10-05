@@ -18,7 +18,7 @@ on:
         description: 'Commit ID (default HEAD)'
         required: false
       new-version:
-        description: 'New version number'
+        description: 'New version number (eg v2.3)'
         required: false
 
 permissions:
@@ -60,13 +60,13 @@ jobs:
             }
             
             if ($productionVersion) {
-                $parts = $productioNVersion -split '\.'
+                $parts = $productionVersion -split '\.'
                 $major = $parts[0]
                 $minor = 1 + [int]$parts[1]
 
-                $newVersion = "$major.$minor.0"
+                $newVersion = "$major.$minor"
             } else {
-                $newVersion = "v1.0.0"
+                $newVersion = "v1.0"
             }
           }
           echo "New version: $newVersion"
@@ -82,7 +82,7 @@ jobs:
           $newVersion = $env:VERSION
 
           # add the "-rc.0" suffix to the version number
-          $initialRcVersion = $env:VERSION -replace '\.0$', '.0-rc.0'
+          $initialRcVersion = $newVersion + "-rc.0"
 
           gh release create $initialRcVersion `
             --title "Release Candidate $initialRcVersion" `

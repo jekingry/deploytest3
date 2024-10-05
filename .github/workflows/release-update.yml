@@ -10,8 +10,6 @@ name: Release - Update
 # gh release delete v2.3.0-rc.4
 
 # Update main
-# git checkout release/v2.3
-# git pull
 # git checkout main
 # git pull
 # git merge --no-ff v2.3.0-rc.5 --message "Merge 'v2.3.0-rc.5'"
@@ -56,8 +54,8 @@ jobs:
           echo "Production release: $productionVersion"
           echo "PRODUCTION_VERSION=$productionVersion" >> $env:GITHUB_OUTPUT
 
-          $productionVersionParts = $productionVersion -split '\.'
-          $productionVersionBranch = "release/$($productionVersionParts[0]).$($productionVersionParts[1])"
+          $parts= $productionVersion -split '\.'
+          $productionVersionBranch = "release/$($parts[0]).$($parts[1])"
           echo "Production branch: $productionVersionBranch"
           echo "PRODUCTION_BRANCH=$productionVersionBranch" >> $env:GITHUB_OUTPUT
 
@@ -66,8 +64,8 @@ jobs:
           if ($prereleaseVersion -ne $null) {
             echo "PRERELEASE_VERSION=$prereleaseVersion" >> $env:GITHUB_OUTPUT
 
-            $prereleaseVersionParts = $prereleaseVersion -split '\.'
-            $prereleaseBranch = "release/$($prereleaseVersionParts[0]).$($prereleaseVersionParts[1])"
+            $parts = $prereleaseVersion -split '\.'
+            $prereleaseBranch = "release/$($parts[0]).$($parts[1])"
 
             echo "Pre-release branch: $prereleaseBranch"
             echo "PRERELEASE_BRANCH=$prereleaseBranch" >> $env:GITHUB_OUTPUT
@@ -120,9 +118,9 @@ jobs:
         run: |
           $prereleaseVersion = $env:PRERELEASE_VERSION
           $parts = $prereleaseVersion -split '\.'
-          $currentRc = [int]$parts[3]
+          $currentRc = [int]$parts[2]
           $nextRc = $currentRc + 1
-          $newRcVersion = "$($parts[0]).$($parts[1]).$($parts[2]).$nextRc"
+          $newRcVersion = "$($parts[0]).$($parts[1]).$nextRc"
 
           echo "New RC version: $rcVersion"
           gh release create $newRcVersion `
