@@ -16,24 +16,26 @@ on:
 permissions:
   contents: write
 
+defaults:
+  run:
+    shell: pwsh
+
 jobs:
   finish-release:
     runs-on: ubuntu-latest
     environment: ReleaseManagement
-    defaults:
-      run:
-        shell: pwsh
+    env:
+      GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+      TARGET_COMMIT: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
-      - name: Fetch all tags
-        run: git fetch --depth=1 --tags
 
       - name: Determin versions
         id: determine-versions
         env:
-          GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+          TARGET_REF_NAME: ${{ github.ref_name }}
         run: |
           $prereleaseVersion = gh release list --json tagName,isPrerelease --jq ".[] | select(.isPrerelease) | .tagName"
           echo "Last pre-release: $prereleaseVersion"
@@ -42,6 +44,14 @@ jobs:
               echo "No pre-release found"
               exit 1
           }
+          # verify $prereleaseVersion points to the current commit
+          git fetch origin $prereleaseVersion
+          $prereleaseCommit = git rev-parse $prereleaseVersion
+          if ($prereleaseCommit -ne $env:TARGET_COMMIT) {
+              echo "$($env:TARGET_REF_NAME) is not the same as $prereleaseVersion"
+              exit 1
+          }
+
           echo "PRERELEASE_VERSION=$prereleaseVersion" >> $env:GITHUB_OUTPUT
 
           $productionVersion = gh release list --json tagName,isLatest --jq ".[] | select(.isLatest) | .tagName"
@@ -67,7 +77,6 @@ jobs:
 
       - name: Create release
         env:
-          GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
           PRERELEASE_VERSION: ${{ steps.determine-versions.outputs.PRERELEASE_VERSION }}
           NEW_VERSION: ${{ steps.determine-versions.outputs.NEW_VERSION }}
           PRODUCTION_VERSION: ${{ steps.determine-versions.outputs.PRODUCTION_VERSION }}
@@ -92,6 +101,5 @@ jobs:
 
       - name: Delete pre-release
         env:
-          GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
           PRERELEASE_VERSION: ${{ steps.determine-versions.outputs.PRERELEASE_VERSION }}
         run: gh release delete $env:PRERELEASE_VERSION --cleanup-tag --yes       
