@@ -71,14 +71,14 @@ jobs:
             echo "PRERELEASE_BRANCH=$prereleaseBranch" >> $env:GITHUB_OUTPUT
           }
 
-          $branchName = $null
+          $currentVersion = $null
           $releaseType = $null
 
           if ($env:CURRENT_BRANCH -eq $productionVersionBranch) {
-            $branchName = $productionVersion
+            $currentVersion = $productionVersion
             $releaseType = "production"
           } elseif ($env:CURRENT_BRANCH -eq $prereleaseBranch) {
-            $branchName = $prereleaseVersion
+            $currentVersion = $prereleaseVersion
             $releaseType = "prerelease"
           } else {
             echo "New release branch"
@@ -87,12 +87,12 @@ jobs:
           }
 
           # check if there are differences
-          $diff = git diff --name-only "$branchName..HEAD"
+          $diff = git diff --name-only "$currentVersion..HEAD"
           if ($diff -ne $null) {
-            echo "There are differences between the $releaseType and the current branch"
+            echo "There are differences between the $currentVersion and $($env:CURRENT_BRANCH)"
             echo "RELEASE_TYPE=$releaseType" >> $env:GITHUB_OUTPUT
           } else {
-            echo "There are no differences between the $releaseType and the current branch"
+            echo "There are no differences between $currentVersion and $($env:CURRENT_BRANCH)"
             echo "RELEASE_TYPE=no-changes" >> $env:GITHUB_OUTPUT
           }
 
@@ -124,7 +124,7 @@ jobs:
 
           echo "New RC version: $rcVersion"
           gh release create $newRcVersion `
-            --title "Release Candidate $rcVersion" `
+            --title "Release Candidate $newRcVersion" `
             --prerelease `
             --generate-notes `
             --notes-start-tag $env:PRODUCTION_VERSION `
@@ -136,8 +136,7 @@ jobs:
           # Attempt to merge into main if no conflicts
           git fetch origin main
           git checkout main
-          git pull
-          (git merge --no-ff $newRcVersion --message "Merge '$newRcVersion'" && git push origin main) || {
+          (git merge --allow-unrelated-histories --no-ff $newRcVersion --message "Merge $newRcVersion" && git push origin main) || {
             echo "Merge conflicts detected. Creating a pull request."
             $mergeBranch = "release-merge/$newRcVersion"
             git checkout -b $mergeBranch $newRcVersion
