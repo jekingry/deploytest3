@@ -23,10 +23,7 @@ on:
   push:
     branches:
       - 'release/*'
-
-permissions:
-  contents: write
-
+  
 defaults:
   run:
     shell: pwsh
@@ -115,8 +112,6 @@ jobs:
       PRODUCTION_BRANCH: ${{ needs.get-release-type.outputs.PRODUCTION_BRANCH }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
           
       - name: Calculate new version
         id: calculate-version
@@ -168,8 +163,6 @@ jobs:
       PRODUCTION_VERSION: ${{ needs.get-release-type.outputs.PRODUCTION_VERSION }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
 
       - name: Calculate new RC version
         id: calculate-version
@@ -230,11 +223,9 @@ jobs:
             --label auto-merge
       - name: Attempt to merge PR
         env:
-          AUTHOR_EMAIL: ${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com
           MERGE_HEAD: ${{ steps.create-merge-branch.outputs.MERGE_HEAD }}
         run: |
           gh pr merge $env:MERGE_HEAD `
-              --author-email $env:AUTHOR_EMAIL `
               --merge `
               --auto `
               --delete-branch
