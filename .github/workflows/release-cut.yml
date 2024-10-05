@@ -84,9 +84,11 @@ jobs:
           # add the "-rc.0" suffix to the version number
           $initialRcVersion = $newVersion + "-rc.0"
 
+          git tag $initialRcVersion $RELEASE_TARGET
+          git push origin $initialRcVersion
+
           gh release create $initialRcVersion `
             --title "Release Candidate $initialRcVersion" `
-            --target $env:RELEASE_TARGET `
             --prerelease `
             --generate-notes `
             --notes-start-tag $env:PRODUCTION_VERSION
