@@ -112,6 +112,8 @@ jobs:
         env:
             PRODUCTION_VERSION: ${{ needs.get-release-type.outputs.PRODUCTION_VERSION }}
             PRODUCTION_BRANCH: ${{ needs.get-release-type.outputs.PRODUCTION_BRANCH }}
+            PRERELEASE_VERSION: ${{ needs.get-release-type.outputs.PRERELEASE_VERSION }}
+            PRERELEASE_BRANCH: ${{ needs.get-release-type.outputs.PRERELEASE_BRANCH }}
             GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
         run: |
           $productionVersion = $env:PRODUCTION_VERSION
@@ -129,21 +131,32 @@ jobs:
             --title "Release $newVersion" `
             --generate-notes `
             --notes-start-tag $productionVersion 
-                    
-          # Attempt to merge into main if no conflicts
-          git fetch origin main
-          git checkout main
+
+
+          # Attempt to merge into RC if no conflicts
+
+          $targetBranch = $null
+          $targetVersion = $null
+
+          if ($env:PRERELEASE_VERSION) {
+            $targetBranch = $env:PRERELEASE_BRANCH
+          } else {
+            $targetBranch = "main"
+          }
+          
           git config user.name "github-actions[bot]"
           git config user.email "${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com"      
-          (git merge --no-ff --message "Merge $newVersion" $newVersion && git push origin main) || {
+          git fetch origin $targetBranch
+          git checkout $targetBranch
+          (git merge --no-ff --message "Merge $newVersion into $targetBranch" $newVersion && git push origin $targetBranch) || {
             echo "Merge conflicts detected. Creating a pull request."
             $mergeBranch = "release-merge/$newVersion"
             git checkout -b $mergeBranch $newVersion
             git push -u origin $mergeBranch
             gh pr create `
-              --title "Release $newVersion to main" `
-              --body "This PR resolves merge conflicts between $newVersion and main." `
-              --base main `
+              --title "Release $newVersion to $targetBranch" `
+              --body "This PR resolves merge conflicts between $newVersion and $targetBranch." `
+              --base $targetBranch `
               --head $mergeBranch `
               --label "merge-conflict"
           }
