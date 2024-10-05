@@ -87,7 +87,7 @@ jobs:
           }
 
           # check if there are differences
-          $diff = git diff --name-only $branchName..HEAD
+          $diff = git diff --name-only "$branchName..HEAD"
           if ($diff -ne $null) {
             echo "There are differences between the $releaseType and the current branch"
             echo "RELEASE_TYPE=$releaseType" >> $env:GITHUB_OUTPUT
