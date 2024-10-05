@@ -223,8 +223,8 @@ jobs:
           MERGE_HEAD: ${{ steps.create-merge-branch.outputs.MERGE_HEAD }}
         run: |
           gh pr create `
-            --title "Release Candidate $($env:NEW_VERSION) to $($env:MERGE_BASE)" `
-            --body "Merge $($env:MERGE_TYPE_NAME) $($env:NEW_VERSION) to $(env:MERGE_BRANCH)" `
+            --title "$($env:MERGE_TYPE_NAME) $($env:NEW_VERSION) to $($env:MERGE_BASE)" `
+            --body "Merge $($env:MERGE_TYPE_NAME) $($env:NEW_VERSION) to $($env:MERGE_BASE)" `
             --base $env:MERGE_BASE `
             --head $env:MERGE_HEAD `
             --label auto-merge
