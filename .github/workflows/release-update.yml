@@ -192,8 +192,8 @@ jobs:
   merge-branch:
     environment: ReleaseManagement
     runs-on: ubuntu-latest
-    needs: [update-prerelease, hotfix-release]
-    if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    needs: [get-release-type, update-prerelease, hotfix-release]
+    if: always() && needs.get-release-type.outputs.RELEASE_TYPE != 'no-changes' && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     env:
       GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
       TARGET_COMMIT: ${{ github.sha }}
