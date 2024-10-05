@@ -7,6 +7,7 @@ name: Release - Update
 
 # Create Release
 # gh release create v2.3.0-rc.5 --target release/v2.3 --prerelease --generate-notes --notes-start-tag v2.2.0
+# gh release delete v2.3.0-rc.4
 
 # Update main
 # git checkout -b release/v2.3 main
@@ -19,7 +20,6 @@ name: Release - Update
 # If conflicts then make PR:
 # git checkout -b release-merge/v2.3.0-rc.5
 # gh pr create --fill --base main --head release-merge/v2.3.0-rc.5 --label "merge-conflict"
-
 
 on:
   push:
@@ -66,7 +66,7 @@ jobs:
           if ($prereleaseVersion -ne $null) {
             echo "PRERELEASE_VERSION=$prereleaseVersion" >> $env:GITHUB_OUTPUT
 
-            $prereleaseVersionParts = $prereleaseVersion -split '\.',
+            $prereleaseVersionParts = $prereleaseVersion -split '\.'
             $prereleaseBranch = "release/$($prereleaseVersionParts[0]).$($prereleaseVersionParts[1])"
 
             echo "Pre-release branch: $prereleaseBranch"
@@ -139,11 +139,11 @@ jobs:
           git fetch origin main
           git checkout main
           git pull
-          (git merge --no-ff $newRcVersion && git push origin main) || {
+          (git merge --no-ff $newRcVersion --message "Merge branch '$newRcVersion'" && git push origin main) || {
             echo "Merge conflicts detected. Creating a pull request."
             $mergeBranch = "release-merge/$newRcVersion"
             git checkout -b $mergeBranch $newRcVersion
-            git push origin $mergeBranch
+            git push -u origin $mergeBranch
             gh pr create `
               --title "Release Candidate $newRcVersion to main" `
               --body "This PR resolves merge conflicts between $newRcVersion and main." `
