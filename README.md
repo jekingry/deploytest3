@@ -1,1 +1,1 @@
-# deploytest3 - a demo repository
+# DeployTest3 - a demo repository
