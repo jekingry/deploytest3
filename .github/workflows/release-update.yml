@@ -105,7 +105,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           token: ${{ secrets.ADMIN_GITHUB_TOKEN }}    
 
       - name: Create new hotfix release
@@ -115,6 +114,7 @@ jobs:
             PRERELEASE_VERSION: ${{ needs.get-release-type.outputs.PRERELEASE_VERSION }}
             PRERELEASE_BRANCH: ${{ needs.get-release-type.outputs.PRERELEASE_BRANCH }}
             GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+            TARGET_COMMIT: ${{ github.sha }}
         run: |
           $productionVersion = $env:PRODUCTION_VERSION
           $parts = $productionVersion -split '\.'
@@ -125,13 +125,11 @@ jobs:
           $newVersion = "$major.$minor.$patch"
 
           echo "New hotfix version: $newVersion"
-          git tag $newVersion HEAD
-          git push origin $newVersion
           gh release create $newVersion `
             --title "Release $newVersion" `
             --generate-notes `
-            --notes-start-tag $productionVersion 
-
+            --notes-start-tag $productionVersion
+            --target $env:TARGET_COMMIT
 
           # Attempt to merge into RC if no conflicts
 
@@ -143,23 +141,20 @@ jobs:
           } else {
             $targetBranch = "main"
           }
-          
-          git config user.name "github-actions[bot]"
-          git config user.email "${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com"      
-          git fetch origin $targetBranch
-          git checkout $targetBranch
-          (git merge --no-ff --message "Merge $newVersion into $targetBranch" $newVersion && git push origin $targetBranch) || $(
-            echo "Merge conflicts detected. Creating a pull request."
-            $mergeBranch = "release-merge/$newVersion"
-            git checkout -b $mergeBranch $newVersion
-            git push -u origin $mergeBranch
-            gh pr create `
-              --title "Release $newVersion to $targetBranch" `
-              --body "This PR resolves merge conflicts between $newVersion and $targetBranch." `
-              --base $targetBranch `
-              --head $mergeBranch `
-              --label "merge-conflict"
-          )
+
+          $mergeBranch = "merge/$newVersion"
+          git checkout -b $mergeBranch $newVersion
+          git push -u origin $mergeBranch
+          gh pr create `
+            --title "Release $newVersion to $targetBranch" `
+            --fill `
+            --base $targetBranch `
+            --head $mergeBranch `
+          gh pr merge $mergeBranch `
+            --author-email "${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com" `
+            --merge `
+            --auto `
+            --delete-branch          
 
   update-prerelease:
     environment: ReleaseManagement
@@ -169,7 +164,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
 
       - name: Create new RC release
@@ -178,6 +172,7 @@ jobs:
             PRERELEASE_BRANCH: ${{ needs.get-release-type.outputs.PRERELEASE_BRANCH }}
             PRODUCTION_VERSION: ${{ needs.get-release-type.outputs.PRODUCTION_VERSION }}
             GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+            TARGET_COMMIT: ${{ github.sha }}
         run: |
           $prereleaseVersion = $env:PRERELEASE_VERSION
           $parts = $prereleaseVersion -split '\.'
@@ -186,32 +181,27 @@ jobs:
           $newRcVersion = "$($parts[0]).$($parts[1]).$($parts[2]).$nextRc"
 
           echo "New RC version: $newRcVersion"
-          git tag $newRcVersion HEAD
-          git push origin $newRcVersion
           gh release create $newRcVersion `
             --title "Release Candidate $newRcVersion" `
             --prerelease `
             --generate-notes `
-            --notes-start-tag $env:PRODUCTION_VERSION
+            --notes-start-tag $env:PRODUCTION_VERSION `
+            --target $env:TARGET_COMMIT
           
           # Delete old RC release
           gh release delete $prereleaseVersion --cleanup-tag --yes
           
-          # Attempt to merge into main if no conflicts
-          git fetch origin main
-          git checkout main
-          git config user.name "github-actions[bot]"
-          git config user.email "${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com"      
-          (git merge --no-ff --message "Merge $newRcVersion" $newRcVersion && git push origin main) || $(
-            echo "Merge conflicts detected. Creating a pull request."
-            $mergeBranch = "release-merge/$newRcVersion"
-            git checkout -b $mergeBranch $newRcVersion
-            git push -u origin $mergeBranch
-            gh pr create `
-              --title "Release Candidate $newRcVersion to main" `
-              --body "This PR resolves merge conflicts between $newRcVersion and main." `
-              --base main `
-              --head $mergeBranch `
-              --label "merge-conflict"
-          )
+          $mergeBranch = "merge/$newRcVersion"
+          git checkout -b $mergeBranch $newRcVersion
+          git push -u origin $mergeBranch
+          gh pr create `
+            --title "Release Candidate $newVersion to main" `
+            --fill `
+            --base main `
+            --head $mergeBranch `
+          gh pr merge $mergeBranch `
+            --author-email "${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com" `
+            --merge `
+            --auto `
+            --delete-branch
 
