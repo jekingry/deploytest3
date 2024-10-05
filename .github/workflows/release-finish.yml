@@ -50,7 +50,7 @@ jobs:
           $parts = $prereleaseVersion -split '\.'
           $major = $parts[0]
           $minor = $parts[1]
-          $newVersion = "$major.$minor.0"
+          $newVersion = "$major.$minor"
           echo "New version: $newVersion"
           echo "NEW_VERSION=$newVersion" >> $env:GITHUB_OUTPUT
           
