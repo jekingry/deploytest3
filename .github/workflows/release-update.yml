@@ -148,7 +148,7 @@ jobs:
           git config user.email "${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com"      
           git fetch origin $targetBranch
           git checkout $targetBranch
-          (git merge --no-ff --message "Merge $newVersion into $targetBranch" $newVersion && git push origin $targetBranch) || {
+          (git merge --no-ff --message "Merge $newVersion into $targetBranch" $newVersion && git push origin $targetBranch) || $(
             echo "Merge conflicts detected. Creating a pull request."
             $mergeBranch = "release-merge/$newVersion"
             git checkout -b $mergeBranch $newVersion
@@ -159,7 +159,7 @@ jobs:
               --base $targetBranch `
               --head $mergeBranch `
               --label "merge-conflict"
-          }
+          )
 
   update-prerelease:
     environment: ReleaseManagement
@@ -202,7 +202,7 @@ jobs:
           git checkout main
           git config user.name "github-actions[bot]"
           git config user.email "${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com"      
-          (git merge --no-ff --message "Merge $newRcVersion" $newRcVersion && git push origin main) || {
+          (git merge --no-ff --message "Merge $newRcVersion" $newRcVersion && git push origin main) || $(
             echo "Merge conflicts detected. Creating a pull request."
             $mergeBranch = "release-merge/$newRcVersion"
             git checkout -b $mergeBranch $newRcVersion
@@ -213,5 +213,5 @@ jobs:
               --base main `
               --head $mergeBranch `
               --label "merge-conflict"
-          }
+          )
 
