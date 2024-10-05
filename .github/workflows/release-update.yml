@@ -223,7 +223,7 @@ jobs:
             --title "Release Candidate $($env:NEW_VERSION) to $(env:MERGE_BRANCH)" `
             --body "Merge RC $($env:NEW_VERSION) to $(env:MERGE_BRANCH)" `
             --base main `
-            --head $env:MERGE_BASE 
+            --head $env:MERGE_BASE `
             --label auto-merge
       - name: Attempt to merge PR
         env:
