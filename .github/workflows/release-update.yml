@@ -102,19 +102,24 @@ jobs:
     runs-on: ubuntu-latest
     needs: get-release-type
     if: ${{ needs.get-release-type.outputs.RELEASE_TYPE == 'hotfix' }}
+    outputs: 
+      NEW_VERSION: ${{ steps.calculate-version.outputs.NEW_VERSION }}
+      MERGE_BASE: ${{ steps.find-merge-base.outputs.MERGE_BASE }}
+      MERGE_TYPE_NAME: "Hotfix"
+    env:
+      GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+      TARGET_COMMIT: ${{ github.sha }}
+      PRERELEASE_VERSION: ${{ needs.get-release-type.outputs.PRERELEASE_VERSION }}
+      PRERELEASE_BRANCH: ${{ needs.get-release-type.outputs.PRERELEASE_BRANCH }}
+      PRODUCTION_VERSION: ${{ needs.get-release-type.outputs.PRODUCTION_VERSION }}
+      PRODUCTION_BRANCH: ${{ needs.get-release-type.outputs.PRODUCTION_BRANCH }}
     steps:
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}    
-
-      - name: Create new hotfix release
-        env:
-            PRODUCTION_VERSION: ${{ needs.get-release-type.outputs.PRODUCTION_VERSION }}
-            PRODUCTION_BRANCH: ${{ needs.get-release-type.outputs.PRODUCTION_BRANCH }}
-            PRERELEASE_VERSION: ${{ needs.get-release-type.outputs.PRERELEASE_VERSION }}
-            PRERELEASE_BRANCH: ${{ needs.get-release-type.outputs.PRERELEASE_BRANCH }}
-            GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
-            TARGET_COMMIT: ${{ github.sha }}
+          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+          
+      - name: Calculate new version
+        id: calculate-version
         run: |
           $productionVersion = $env:PRODUCTION_VERSION
           $parts = $productionVersion -split '\.'
@@ -125,83 +130,111 @@ jobs:
           $newVersion = "$major.$minor.$patch"
 
           echo "New hotfix version: $newVersion"
-          gh release create $newVersion `
-            --title "Release $newVersion" `
+          echo "NEW_VERSION=$newVersion" >> $env:GITHUB_OUTPUT        T          
+
+      - name: Create new hotfix release
+        env:
+          NEW_VERSION: ${{ steps.calculate-version.outputs.NEW_VERSION }}
+        run: |
+          gh release create $env:NEW_VERSION `
+            --title "Release $($env:NEW_VERSION)" `
             --generate-notes `
-            --notes-start-tag $productionVersion
+            --notes-start-tag $env:PRODUCTION_VERSION `
             --target $env:TARGET_COMMIT
 
-          # Attempt to merge into RC if no conflicts
-
-          $targetBranch = $null
-          $targetVersion = $null
-
+      - name: Find merge base
+        id: find-merge-base
+        run: |          
+          $mergeBase = "main"
           if ($env:PRERELEASE_VERSION) {
-            $targetBranch = $env:PRERELEASE_BRANCH
-          } else {
-            $targetBranch = "main"
-          }
-
-          $mergeBranch = "merge/$newVersion"
-          git checkout -b $mergeBranch $newVersion
-          git push -u origin $mergeBranch
-          gh pr create `
-            --title "Release $newVersion to $targetBranch" `
-            --fill `
-            --base $targetBranch `
-            --head $mergeBranch `
-          gh pr merge $mergeBranch `
-            --author-email "${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com" `
-            --merge `
-            --auto `
-            --delete-branch          
+            $mergeBase = $env:PRERELEASE_BRANCH
+          }        
+          echo "MERGE_BASE=$mergeBase" >> $env:GITHUB_OUTPUT
 
   update-prerelease:
     environment: ReleaseManagement
     runs-on: ubuntu-latest
     needs: get-release-type
     if: ${{ needs.get-release-type.outputs.RELEASE_TYPE == 'prerelease' }}
+    outputs: 
+      NEW_VERSION: ${{ steps.calculate-version.outputs.NEW_VERSION }}
+      MERGE_BASE: "main"
+      MERGE_TYPE_NAME: "Release Candidate"
+    env:
+      GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+      TARGET_COMMIT: ${{ github.sha }}
+      PRERELEASE_VERSION: ${{ needs.get-release-type.outputs.PRERELEASE_VERSION }}
+      PRERELEASE_BRANCH: ${{ needs.get-release-type.outputs.PRERELEASE_BRANCH }}
+      PRODUCTION_VERSION: ${{ needs.get-release-type.outputs.PRODUCTION_VERSION }}
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
 
-      - name: Create new RC release
-        env:
-            PRERELEASE_VERSION: ${{ needs.get-release-type.outputs.PRERELEASE_VERSION }}
-            PRERELEASE_BRANCH: ${{ needs.get-release-type.outputs.PRERELEASE_BRANCH }}
-            PRODUCTION_VERSION: ${{ needs.get-release-type.outputs.PRODUCTION_VERSION }}
-            GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
-            TARGET_COMMIT: ${{ github.sha }}
+      - name: Calculate new RC version
+        id: calculate-version
         run: |
           $prereleaseVersion = $env:PRERELEASE_VERSION
           $parts = $prereleaseVersion -split '\.'
           $currentRc = [int]$parts[3]
           $nextRc = $currentRc + 1
           $newRcVersion = "$($parts[0]).$($parts[1]).$($parts[2]).$nextRc"
-
           echo "New RC version: $newRcVersion"
-          gh release create $newRcVersion `
-            --title "Release Candidate $newRcVersion" `
+          echo "NEW_VERSION=$newRcVersion" >> $env:GITHUB_OUTPUT
+
+      - name: Create new RC release
+        env: 
+          NEW_VERSION: ${{ steps.calculate-version.outputs.NEW_VERSION }}
+        run: |      
+          gh release create $env:NEW_VERSION `
+            --title "Release Candidate $($env:NEW_VERSION)" `
             --prerelease `
             --generate-notes `
             --notes-start-tag $env:PRODUCTION_VERSION `
             --target $env:TARGET_COMMIT
-          
-          # Delete old RC release
-          gh release delete $prereleaseVersion --cleanup-tag --yes
-          
-          $mergeBranch = "merge/$newRcVersion"
-          git checkout -b $mergeBranch $newRcVersion
-          git push -u origin $mergeBranch
-          gh pr create `
-            --title "Release Candidate $newVersion to main" `
-            --fill `
-            --base main `
-            --head $mergeBranch `
-          gh pr merge $mergeBranch `
-            --author-email "${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com" `
-            --merge `
-            --auto `
-            --delete-branch
 
+      - name: Delete old RC release
+        run: gh release delete $env:PRERELEASE_VERSION --cleanup-tag --yes
+      
+  merge-branch:
+    environment: ReleaseManagement
+    runs-on: ubuntu-latest
+    needs: [update-prerelease, hotfix-release]
+    if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    env:
+      GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+      TARGET_COMMIT: ${{ github.sha }}
+      MERGE_BASE: ${{ needs.update-prerelease.outputs.MERGE_BASE || needs.hotfix-release.outputs.MERGE_BASE }}
+      MERGE_TYPE_NAME: ${{ needs.update-prerelease.outputs.MERGE_TYPE_NAME || needs.hotfix-release.outputs.MERGE_TYPE_NAME }}
+      NEW_VERSION: ${{ needs.update-prerelease.outputs.NEW_VERSION || needs.hotfix-release.outputs.NEW_VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create merge branch
+        id: create-merge-branch
+        run: |          
+          $mergeHead = "merge/$($env:NEW_VERSION)"
+          echo "MERGE_HEAD=$mergeHead" >> $env:GITHUB_OUTPUT
+
+          git checkout -b $mergeHead $env:TARGET_COMMIT
+          git push -u origin $mergeHead
+      - name: Create Merge PR
+        env:
+          MERGE_HEAD: ${{ steps.create-merge-branch.outputs.MERGE_HEAD }}
+        run: |
+          gh pr create `
+            --title "$($env:MERGE_TYPE_NAME) $($env:NEW_VERSION) to $($env:MERGE_BASE)" `
+            --body "Merge $($env:MERGE_TYPE_NAME) $($env:NEW_VERSION) to $($env:MERGE_BASE)" `
+            --base $env:MERGE_BASE `
+            --head $env:MERGE_HEAD `
+            --label auto-merge
+      - name: Attempt to merge PR
+        env:
+          AUTHOR_EMAIL: ${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com
+          MERGE_HEAD: ${{ steps.create-merge-branch.outputs.MERGE_HEAD }}
+        run: |
+          gh pr merge $env:MERGE_HEAD `
+              --author-email $env:AUTHOR_EMAIL `
+              --merge `
+              --auto `
+              --delete-branch
