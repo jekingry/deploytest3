@@ -1,8 +1,7 @@
 name: Release - Auto Merge
 
 on:
-  check_suite:
-    types: [completed]
+  status
 
 jobs:
   print-info:
