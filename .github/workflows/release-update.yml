@@ -210,8 +210,8 @@ jobs:
         id: direct-merge
         continue-on-error: true 
         run: |
+          git fetch origin $env:MERGE_BASE
           git checkout $env:MERGE_BASE
-          git pull
           git merge --no-ff $env:TARGET_COMMIT --message "Merge $($env:MERGE_TYPE_NAME) $($env:NEW_VERSION) into $($env:MERGE_BASE)"
           git push origin $env:MERGE_BASE
 
