@@ -225,6 +225,7 @@ jobs:
         id: create-merge-branch
         if: ${{ steps.direct-merge.outcome == 'failure' }}
         run: |          
+          git merge --abort
           $mergeHead = "merge/$($env:NEW_VERSION)"
           echo "MERGE_HEAD=$mergeHead" >> $env:GITHUB_OUTPUT
 
