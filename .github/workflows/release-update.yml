@@ -52,7 +52,7 @@ jobs:
           echo "Production release: $productionVersion"
           echo "PRODUCTION_VERSION=$productionVersion" >> $env:GITHUB_OUTPUT
 
-          $parts= $productionVersion -split '\.'
+          $parts = $productionVersion -split '\.'
           $productionVersionBranch = "release/$($parts[0]).$($parts[1])"
           echo "Production branch: $productionVersionBranch"
           echo "PRODUCTION_BRANCH=$productionVersionBranch" >> $env:GITHUB_OUTPUT
