@@ -202,16 +202,30 @@ jobs:
       NEW_VERSION: ${{ needs.update-prerelease.outputs.NEW_VERSION || needs.hotfix-release.outputs.NEW_VERSION }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+
+      - name: Attempt direct merge
+        id: direct-merge
+        continue-on-error: true 
+        run: |
+          git checkout $env:MERGE_BASE
+          git pull
+          git merge --no-ff $env:TARGET_COMMIT --message "Merge $($env:MERGE_TYPE_NAME) $($env:NEW_VERSION) into $($env:MERGE_BASE)"
+          git push origin $env:MERGE_BASE
 
       - name: Create merge branch
         id: create-merge-branch
+        if: ${{ steps.direct-merge.outcome == 'failure' }}
         run: |          
           $mergeHead = "merge/$($env:NEW_VERSION)"
           echo "MERGE_HEAD=$mergeHead" >> $env:GITHUB_OUTPUT
 
           git checkout -b $mergeHead $env:TARGET_COMMIT
           git push -u origin $mergeHead
+
       - name: Create Merge PR
+        if: ${{ steps.direct-merge.outcome == 'failure' }}
         env:
           MERGE_HEAD: ${{ steps.create-merge-branch.outputs.MERGE_HEAD }}
         run: |
@@ -221,7 +235,9 @@ jobs:
             --base $env:MERGE_BASE `
             --head $env:MERGE_HEAD `
             --label auto-merge
+
       - name: Attempt to merge PR
+        if: ${{ steps.direct-merge.outcome == 'failure' }}
         env:
           MERGE_HEAD: ${{ steps.create-merge-branch.outputs.MERGE_HEAD }}
         run: |
