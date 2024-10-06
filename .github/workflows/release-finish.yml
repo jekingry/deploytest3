@@ -58,6 +58,11 @@ jobs:
           if ($productionVersion) {
               echo "Current production release: $productionVersion"
               echo "PRODUCTION_VERSION=$productionVersion" >> $env:GITHUB_OUTPUT
+
+              $parts = $productionVersion -split '\.'
+              $productionVersionBranch = "release/$($parts[0]).$($parts[1])"
+              echo "Production branch: $productionVersionBranch"
+              echo "PRODUCTION_BRANCH=$productionVersionBranch" >> $env:GITHUB_OUTPUT
           }
 
           $parts = $prereleaseVersion -split '\.'
@@ -106,8 +111,8 @@ jobs:
 
       - name: Delete the old production release branch
         env:
-          PRODUCTION_VERSION: ${{ steps.determine-versions.outputs.PRODUCTION_VERSION }}
+          PRODUCTION_BRANCH: ${{ steps.determine-versions.outputs.PRODUCTION_BRANCH }}
         run: |
-          if ($env:PRODUCTION_VERSION) {
-            git push origin :release/$env:PRODUCTION_VERSION
+          if ($env:PRODUCTION_BRANCH) {
+            git push origin :release/$env:PRODUCTION_BRANCH
           }
