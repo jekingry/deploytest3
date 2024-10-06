@@ -103,3 +103,11 @@ jobs:
         env:
           PRERELEASE_VERSION: ${{ steps.determine-versions.outputs.PRERELEASE_VERSION }}
         run: gh release delete $env:PRERELEASE_VERSION --cleanup-tag --yes       
+
+      - name: Delete the old production release branch
+        env:
+          PRODUCTION_VERSION: ${{ steps.determine-versions.outputs.PRODUCTION_VERSION }}
+        run: |
+          if ($env:PRODUCTION_VERSION) {
+            git push origin :release/$env:PRODUCTION_VERSION
+          }
