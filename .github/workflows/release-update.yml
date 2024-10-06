@@ -208,10 +208,14 @@ jobs:
 
       - name: Attempt direct merge
         id: direct-merge
-        continue-on-error: true 
+        continue-on-error: true
+        env:
+          AUTHOR_EMAIL: ${{ github.actor_id }}+github-actions[bot]@users.noreply.github.com
         run: |
+          git fetch origin $env:MERGE_BASE
           git checkout $env:MERGE_BASE
-          git pull
+          git config user.name "github-actions[bot]"
+          git config user.email $env:AUTHOR_EMAIL
           git merge --no-ff $env:TARGET_COMMIT --message "Merge $($env:MERGE_TYPE_NAME) $($env:NEW_VERSION) into $($env:MERGE_BASE)"
           git push origin $env:MERGE_BASE
 
