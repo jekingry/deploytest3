@@ -11,6 +11,10 @@
 
 name: Release - Cut
 
+concurrency:
+  group: ReleaseManagement
+  cancel-in-progress: false
+
 on:
   workflow_dispatch:        
     inputs:
@@ -18,7 +22,7 @@ on:
         description: 'Commit ID (default HEAD)'
         required: false
       new-version:
-        description: 'New version number (eg v2.3)'
+        description: 'New version number (eg v2.3.0)'
         required: false
 
 permissions:
