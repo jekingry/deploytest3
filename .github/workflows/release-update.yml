@@ -12,12 +12,16 @@ name: Release - Update
 # Update main
 # git checkout main
 # git pull
-# git merge --no-ff v2.3.0-rc.5 --message "Merge 'v2.3.0-rc.5'"
+# git merge --no-ff v2.3.0-rc.5 --message "Merge v2.3.0-rc.5"
 # git push origin main
 
 # If conflicts then make PR:
 # git checkout -b release-merge/v2.3.0-rc.5
 # gh pr create --fill --base main --head release-merge/v2.3.0-rc.5 --label "merge-conflict"
+
+concurrency:
+  group: ReleaseManagement
+  cancel-in-progress: false
 
 on:
   push:
