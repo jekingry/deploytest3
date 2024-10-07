@@ -216,13 +216,16 @@ jobs:
           git checkout $env:MERGE_BASE
           git config user.name "github-actions[bot]"
           git config user.email $env:AUTHOR_EMAIL
-          git merge --no-ff $env:TARGET_COMMIT --message "Merge $($env:MERGE_TYPE_NAME) $($env:NEW_VERSION) into $($env:MERGE_BASE)"
-          git push origin $env:MERGE_BASE
+          git merge `
+            --no-ff $env:TARGET_COMMIT `
+            --message "Merge $($env:MERGE_TYPE_NAME) $($env:NEW_VERSION) into $($env:MERGE_BASE)" `
+            && git push origin $env:MERGE_BASE
 
       - name: Create merge branch
         id: create-merge-branch
         if: ${{ steps.direct-merge.outcome == 'failure' }}
         run: |          
+          git merge --abort
           $mergeHead = "merge/$($env:NEW_VERSION)"
           echo "MERGE_HEAD=$mergeHead" >> $env:GITHUB_OUTPUT
 
