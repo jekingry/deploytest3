@@ -1,0 +1,64 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployEnvs:
+        description: 'Environment to deploy to'
+        required: true
+        default: '["prod1","prod2"]'
+        type: environment
+      components:
+        description: 'Components to deploy'
+        required: true
+        default: 'all'
+        type: string
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  setup:
+    strategy:
+      matrix:
+        deployEnv: ${{ fromJson(inputs.deployEnvs) }}    
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.deployEnv }}
+    outputs:
+      DEPLOY_CORE: ${{ steps.components.outputs.DEPLOY_CORE }}
+      DEPLOY_WEB: ${{ steps.components.outputs.DEPLOY_WEB }}
+    steps:
+      - id: components
+        run: |
+          echo "Deploying to ${{ matrix.deployEnv }}"
+          echo "Components: ${{ inputs.components }}"
+          if ('${{ inputs.components }}'' -eq 'all') {
+            echo "DEPLOY_CORE=true" >> $env:GITHUB_OUTPUT
+            echo "DEPLOY_WEB=true" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "DEPLOY_CORE=true" >> $env:GITHUB_OUTPUT
+          }
+          
+  build_core:
+    needs: setup
+    if: needs.setup.outputs.DEPLOY_CORE == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Core
+        run: |
+          echo "Building Core"
+
+
+  build_web:
+    needs: setup
+    if: needs.setup.outputs.DEPLOY_WEB == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Web
+        run: |
+          echo "Building Web"
+        
