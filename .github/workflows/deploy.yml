@@ -7,7 +7,7 @@ on:
         description: 'Environment to deploy to'
         required: true
         default: '["prod1","prod2"]'
-        type: environment
+        type: string
       components:
         description: 'Components to deploy'
         required: true
