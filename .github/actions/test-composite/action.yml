@@ -11,8 +11,11 @@ runs:
   using: 'composite'
   steps:
     - name: Echo input 
-      run: echo "This is a test composite action. Example input: ${{ inputs.example_input }}"
+      run: |
+        echo "This is a test composite action. Example input: ${{ inputs.example_input }}"
     - name: Echo github context 
-      run: echo "Github ${{ toJson(github) }}"
+      run: |
+        echo "Github ${{ toJson(github) }}"
     - name: Echo runner context 
-      run: echo "Runner ${{ toJson(runner) }}"
+      run: |
+        echo "Runner ${{ toJson(runner) }}"
