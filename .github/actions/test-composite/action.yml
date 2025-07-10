@@ -1,0 +1,18 @@
+name: 'Test Composite'
+description: 'Set or clear Uptime.com maintenance mode for a deployment'
+
+inputs:
+  example_input:
+    required: false
+    type: string
+    default: 'example'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Echo input 
+      run: echo "This is a test composite action. Example input: ${{ inputs.example_input }}"
+    - name: Echo github context 
+      run: echo "Github ${{ toJson(github) }}"
+    - name: Echo runner context 
+      run: echo "Runner ${{ toJson(runner) }}"
