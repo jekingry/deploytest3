@@ -11,7 +11,7 @@ runs:
   using: 'composite'
   steps:
     - name: Echo input
-      shell: pwsh
+      shell: ${{ runner.os == 'Windows' && 'powershell' || 'pwsh' }}
       run: |
         echo "This is a test composite action. Example input: ${{ inputs.example_input }}"
     # - name: Echo github context 
@@ -19,6 +19,6 @@ runs:
     #   run: |
     #     echo "Github '${{ toJson(github) }}'"
     - name: Echo runner context 
-      shell: pwsh
+      shell: ${{ runner.os == 'Windows' && 'powershell' || 'pwsh' }}
       run: |
         echo "Runner '${{ toJson(runner) }}'"
