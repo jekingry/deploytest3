@@ -10,7 +10,8 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Echo input 
+    - name: Echo input
+      shell: pwsh
       run: |
         echo "This is a test composite action. Example input: ${{ inputs.example_input }}"
     - name: Echo github context 
