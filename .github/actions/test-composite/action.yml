@@ -17,8 +17,8 @@ runs:
     - name: Echo github context 
       shell: pwsh
       run: |
-        echo "Github ${{ toJson(github) }}"
+        echo "Github '${{ toJson(github) }}'"
     - name: Echo runner context 
       shell: pwsh
       run: |
-        echo "Runner ${{ toJson(runner) }}"
+        echo "Runner '${{ toJson(runner) }}'"
